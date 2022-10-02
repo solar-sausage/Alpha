@@ -1,7 +1,6 @@
-#Computer science coursework prototype "Alpha". Programmed from scratch in 14 hours. The built in level currently playable is a test that everything works as it should.
-from cmath import pi, rect, sin, sqrt
+#Computer science coursework prototype "Alpha".
+from math import *
 from distutils.spawn import spawn
-from math import cos
 from random import Random, getrandbits, random
 import pygame
 from pygame.locals import *
@@ -95,10 +94,10 @@ class Player(pygame.sprite.Sprite):
         self.x_position = x_position
         self.y_position = y_position
         self.sprite = pygame.image.load("player_sprite.png")
-        self.rect = self.sprite.get_rect(center = (self.x_position, self.y_position))
+        self.rect = self.sprite.get_rect()
         self.mask = pygame.mask.from_threshold(self.sprite, [255, 255, 255, 255], [255, 255, 255, 0])
-        self.location = self.sprite.get_rect()
-        self.location.center = x_position, y_position
+        self.rect.center = x_position, y_position
+        self.location = x_position, y_position
 
     #The player is moved, and collision checks for collidable objects are made.
     def move(self, x_factor, y_factor):
@@ -111,14 +110,14 @@ class Player(pygame.sprite.Sprite):
         else:
             self.x_position += x_factor*speed
             self.y_position += y_factor*speed
-        self.x_position = self.x_position.real
-        self.y_position = self.y_position.real
+        self.x_position = self.x_position
+        self.y_position = self.y_position
         for object in collidable_objects:
-            if self.mask.overlap_area(object.mask, ((self.x_position - object.x_position-41), (self.y_position - object.y_position-41))) != 0:
+            if self.mask.overlap_area(object.mask, ((object.x_position - self.x_position), (object.y_position - self.y_position))) != 0:
                 self.x_position = self.old_x
         self.y_position = self.y_position
         for object in collidable_objects:
-            if self.mask.overlap_area(object.mask, ((self.x_position - object.x_position-41), (self.y_position - object.y_position-41))) != 0:
+            if self.mask.overlap_area(object.mask, ((object.x_position - self.x_position), (object.y_position - self.y_position))) != 0:
                 self.y_position = self.old_y
         self.location = self.x_position, self.y_position
     #The update loop handles health regeneration currently.
@@ -128,6 +127,7 @@ class Player(pygame.sprite.Sprite):
             if self.regen_timer <= 0:
                 self.life += 1
                 self.regen_timer = 5
+        self.rect.center = (self.x_position, self.y_position)
     def clean(self):
         pass
 
@@ -158,8 +158,8 @@ class Bullet(pygame.sprite.Sprite):
         self.x_position = x_position
         self.y_position = y_position
         self.direction = direction
-        self.x_velocity = speed*sin(self.direction).real
-        self.y_velocity = speed*cos(self.direction).real
+        self.x_velocity = speed*sin(self.direction)
+        self.y_velocity = speed*cos(self.direction)
         self.x_acceleration = x_acceleration
         self.y_acceleration = y_acceleration
         self.location = self.sprite.get_rect()
@@ -180,7 +180,7 @@ class BasicBullet(Bullet):
         self.x_position += self.x_velocity*Delta
         self.y_position -= self.y_velocity*Delta
         self.location = self.x_position, self.y_position
-        if self.mask.overlap_area(player.mask, ((self.x_position - player.x_position), (self.y_position - player.y_position))) != 0:
+        if self.mask.overlap(player.mask, ((player.x_position - self.x_position), (player.y_position - self.y_position))):
             player.hit()
             self.kill()
 
@@ -211,7 +211,7 @@ class BigBullet(Bullet):
         self.y_velocity += self.y_acceleration*Delta
         self.x_position += self.x_velocity*Delta
         self.y_position -= self.y_velocity*Delta
-        if self.mask.overlap_area(player.mask, ((self.x_position - player.x_position), (self.y_position - player.y_position))) != 0:
+        if self.mask.overlap(player.mask, ((player.x_position - self.x_position), (player.y_position - self.y_position))):
             self.hit_delay -= Delta
             if self.hit_delay <= 0:
                 player.hit()
@@ -277,8 +277,8 @@ class CollideBox(pygame.sprite.Sprite):
         self.x_position = x_position
         self.y_position = y_position
         self.speed = speed
-        self.x_velocity = self.speed*sin(direction).real
-        self.y_velocity = self.speed*cos(direction).real
+        self.x_velocity = self.speed*sin(direction)
+        self.y_velocity = self.speed*cos(direction)
         self.x_acceleration = x_acceleration
         self.y_acceleration = y_acceleration
         self.location = self.x_position, self.y_position
@@ -289,11 +289,11 @@ class CollideBox(pygame.sprite.Sprite):
     def update(self):
         self.x_velocity += self.x_acceleration*Delta
         self.x_position += self.x_velocity*Delta
-        if self.mask.overlap_area(player.mask, ((self.x_position+41 - player.x_position), (self.y_position+41 - player.y_position))) != 0:
+        if self.mask.overlap_area(player.mask, ((player.x_position - self.x_position), (player.y_position - self.y_position))) != 0:
             player.shove(self.x_velocity*Delta, 0)
         self.y_velocity += self.y_acceleration*Delta
         self.y_position += self.y_velocity*Delta
-        if self.mask.overlap_area(player.mask, ((self.x_position+41 - player.x_position), (self.y_position+41 - player.y_position))) != 0:
+        if self.mask.overlap_area(player.mask, ((player.x_position - self.x_position), (player.y_position - self.y_position))) != 0:
             player.shove(0, self.y_velocity*Delta)
         self.location = self.x_position, self.y_position
 
@@ -336,7 +336,7 @@ class Objective(pygame.sprite.Sprite):
 
     #If the player touches it, the level handler is informed and this sprite explodes.
     def clean(self):
-        if self.mask.overlap_area(player.mask, ((self.x_position - player.x_position), (self.y_position - player.y_position))) != 0:
+        if self.mask.overlap(player.mask, ((player.x_position - self.x_position), (player.y_position - self.y_position))):
             goal_particles(self.x_position, self.y_position)
             level_handler.goal -= 1
             self.kill()
@@ -365,6 +365,12 @@ def draw_scene():
     DISPLAY.fill((0, 0, 0))
     for entity in range(len(alive_objects)):
         DISPLAY.blit((alive_objects[entity]).sprite, (alive_objects[entity]).location)
+    #image = pygame.image.load("test_rect.png")
+    #mask = pygame.mask.from_surface(image)
+    #rect = image.get_rect(center = (DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2))
+    #DISPLAY.blit(image, rect.topleft)
+    #if mask.overlap(player.mask, ((player.rect.x - rect.x), (player.rect.y - rect.y))):
+    #        player.shove(0, -300) #this just tells me that it has collided
 
 def get_things_moving():
     #The update() and clean() methods of every living object will be run.
@@ -420,7 +426,6 @@ living_sprites = pygame.sprite.Group()
 harmful_objects = pygame.sprite.Group()
 collidable_objects = pygame.sprite.Group()
 living_sprites.add(player)
-living_sprites.add(CollideBox(700, 700, 5, 5, 0, 0))
 
 #Here is where all the game's stages can be programmed in
 spawn_dictionary, maximum_phase = get_spawn_dictionary()
